@@ -8,7 +8,7 @@ A full-stack travel and hotel booking web application built with **PHP**, **MySQ
 
 ### 🏠 Homepage
 
-![Homepage](screenshots/home_page.png)
+![Homepage](Screenshots/home_page.png)
 
 ---
 
@@ -16,13 +16,13 @@ A full-stack travel and hotel booking web application built with **PHP**, **MySQ
 
 ### 🔍 Search Results
 
-![Search Results](screenshots/results_page.png)
+![Search Results](Screenshots/results_page.png)
 
 ---
 
 ### 📅 Booking Page
 
-![Booking](screenshots/book_page.png)
+![Booking](Screenshots/book_page.png)
 
 
 ---
