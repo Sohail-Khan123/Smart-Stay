@@ -1,6 +1,5 @@
 <?php
 session_start();
-
 // If the user does NOT have a session ID, kick them out to the login page immediately
 // if (!isset($_SESSION["u_id"])) {
 //     header("Location: login.php");
@@ -11,7 +10,7 @@ session_start();
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head> 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Stay</title>

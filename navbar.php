@@ -1,5 +1,4 @@
 
-
 <header>
     <h3>Smart stay</h3>
     <ul>

@@ -1,3 +1,50 @@
+<?php
+session_start();
+if (!isset($_SESSION["u_id"])) {
+    header("Location: login.php");
+    exit;
+}
+
+require_once("db_config.php");
+$userId = $_SESSION["u_id"];
+
+// Check if we have GET parameters to insert a new booking
+$h_id = $_GET['id'] ?? null;
+if ($h_id) {
+    $start_date = $_GET['start'] ?? null;
+    $end_date = $_GET['end'] ?? null;
+    $people = $_GET['people'] ?? null;
+
+    if (empty($start_date)) {
+        $start_date = date('Y-m-d', strtotime('+1 day'));
+    }
+    if (empty($end_date)) {
+        $end_date = date('Y-m-d', strtotime('+2 days'));
+    }
+    if (empty($people)) {
+        $people = 2; // Default to 2 people
+    }
+
+    // Insert or update reservation
+    $stmt = $con->prepare("INSERT INTO reservation (u_id, h_id, start_date, end_date, people) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE start_date = VALUES(start_date), end_date = VALUES(end_date), people = VALUES(people)");
+    if ($stmt) {
+        $stmt->bind_param("iissi", $userId, $h_id, $start_date, $end_date, $people);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // Redirect to book.php (without GET params) to prevent double submission
+    header("Location: book.php");
+    exit;
+}
+
+// Fetch all booked hotels for the current user
+$query = "SELECT r.*, h.name, h.location, h.poster, h.mrp, h.discount, h.rate 
+          FROM reservation r 
+          JOIN hotels h ON r.h_id = h.id 
+          WHERE r.u_id = ?";
+$result = $con->execute_query($query, [$userId]);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -287,85 +334,106 @@
 <body>
     <?php include("navbar.php") ?>
 
-    <!-- <header>
-        <h3>Smart stay</h3>
-        <ul>
-            <li><a href="#">Discover</a></li>
-            <li><a href="#">Community</a></li>
-            <li><a href="#">Special Deals</a></li>
-            <li><a href="#">About Us</a></li>
-            <?php if(!isset($_SESSION["u_id"])){?>
-                <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Register</a></li>
-            <?php } else{?>
-                <li>Hello <?php echo $_SESSION["u_id"] ?></li>
-                <li><a href="logout.php">Logout</a></li>
-            <?php }
-            ?>
-        </ul>
-    </header> -->
+    <h1 style="margin-top: 30px; margin-bottom: 20px; font-weight: bold; font-size: 28px; color: #111;">Your Booked Hotels</h1>
 
-
-<!-- <?php include("navbar.php") ?> -->
-    <div class="summary-card">
-        <div class="card-top">
-            <div class="hotel-info-block">
-                <img class="hotel-thumbnail" src="images/Delhi.avif" alt="Hotel Thumbnail">
-                <div class="hotel-text">
-                    <h2>Hotel Amber Palace</h2>
-                    <div class="rating-row">
-                        <div class="stars">
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star"></i>
-                            <i class="fa-solid fa-star-half-stroke"></i>
+    <?php if ($result && $result->num_rows > 0) { ?>
+        <?php while ($row = $result->fetch_assoc()) { 
+            // Calculate nights
+            $nights = 1;
+            if (!empty($row['start_date']) && !empty($row['end_date']) && $row['start_date'] !== '0000-00-00' && $row['end_date'] !== '0000-00-00') {
+                $start = new DateTime($row['start_date']);
+                $end = new DateTime($row['end_date']);
+                $interval = $start->diff($end);
+                $nights = $interval->days;
+                if ($nights <= 0) $nights = 1;
+            }
+            
+            // Calculate price
+            $mrp_total = $row['mrp'] * $nights;
+            $discount_percent = $row['discount'];
+            $final_price = $mrp_total * (1 - $discount_percent / 100);
+            
+            // Format dates
+            $start_formatted = date('D d M Y', strtotime($row['start_date']));
+            $end_formatted = date('D d M Y', strtotime($row['end_date']));
+        ?>
+            <div class="summary-card">
+                <div class="card-top">
+                    <div class="hotel-info-block">
+                        <img class="hotel-thumbnail" src="<?php echo htmlspecialchars($row['poster'], ENT_QUOTES, 'UTF-8'); ?>" alt="Hotel Thumbnail">
+                        <div class="hotel-text">
+                            <h2><?php echo htmlspecialchars($row['name']); ?></h2>
+                            <div class="rating-row">
+                                <div class="stars">
+                                    <?php
+                                    $rate = floatval($row['rate']);
+                                    $full_stars = floor($rate);
+                                    $half_star = ($rate - $full_stars) >= 0.5 ? 1 : 0;
+                                    for ($i = 0; $i < 5; $i++) {
+                                        if ($i < $full_stars) {
+                                            echo '<i class="fa-solid fa-star"></i>';
+                                        } elseif ($i == $full_stars && $half_star) {
+                                            echo '<i class="fa-solid fa-star-half-stroke"></i>';
+                                        } else {
+                                            echo '<i class="fa-regular fa-star" style="color: #ccc;"></i>';
+                                        }
+                                    }
+                                    ?>
+                                </div>
+                                <span class="badge-couple">Verified Stay</span>
+                            </div>
+                            <div class="hotel-address"><?php echo htmlspecialchars($row['location']); ?></div>
                         </div>
-                        <span class="badge-couple">Couple Friendly</span>
                     </div>
-                    <div class="hotel-address">Amber Road, Jaipur</div>
+                    
+                    <div class="map-embed-wrapper">
+                        <iframe 
+                            src="https://maps.google.com/maps?q=<?php echo urlencode($row['location'] . ' ' . $row['name']); ?>&t=&z=13&ie=UTF-8&iwloc=&output=embed" 
+                            allowfullscreen="" 
+                            loading="lazy">
+                        </iframe>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="card-bottom">
+                    <div class="info-col">
+                        <span class="label">Check In</span>
+                        <span class="value"><?php echo $start_formatted; ?></span>
+                        <span class="sub-value">12 PM</span>
+                    </div>
+
+                    <div class="pill-count"><?php echo $nights; ?> <?php echo $nights == 1 ? 'Night' : 'Nights'; ?></div>
+
+                    <div class="info-col">
+                        <span class="label">Check Out</span>
+                        <span class="value"><?php echo $end_formatted; ?></span>
+                        <span class="sub-value">11 AM</span>
+                    </div>
+
+                    <div class="stay-summary-text">
+                        <?php echo $nights; ?> <?php echo $nights == 1 ? 'Night' : 'Nights'; ?> &nbsp;|&nbsp; <?php echo htmlspecialchars($row['people']); ?> <?php echo $row['people'] == 1 ? 'Person' : 'People'; ?> &nbsp;|&nbsp; 1 Room
+                    </div>
+
+                    <div class="info-col price-block">
+                        <span class="label">Price</span>
+                        <span class="final-price"><?php echo number_format($final_price, 0); ?> Rs</span>
+                        <span class="mrp-discount">
+                            MRP <span class="mrp-strike"><?php echo number_format($mrp_total, 0); ?></span> 
+                            <span class="discount-badge"><?php echo number_format($discount_percent, 0); ?>% Discount</span>
+                        </span>
+                    </div>
                 </div>
             </div>
-            
-            <div class="map-embed-wrapper">
-                <iframe 
-                    src="https://maps.google.com/maps?q=Amber%20Road,%20Jaipur&t=&z=13&ie=UTF-8&iwloc=&output=embed" 
-                    allowfullscreen="" 
-                    loading="lazy">
-                </iframe>
-            </div>
+        <?php } ?>
+    <?php } else { ?>
+        <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 16px; border: 1px solid #e2e8f0; margin: 30px 0;">
+            <i class="fa-solid fa-hotel" style="font-size: 48px; color: #cbd5e1; margin-bottom: 20px;"></i>
+            <h3 style="font-size: 20px; font-weight: 600; color: #334155; margin-bottom: 10px;">No Bookings Found</h3>
+            <p style="color: #64748b; margin-bottom: 20px;">You haven't booked any hotels yet. Start planning your next journey!</p>
+            <a href="index.php" class="btn-black" style="text-decoration: none; padding: 12px 30px; border-radius: 30px; display: inline-block;">Discover Hotels</a>
         </div>
-
-        <div class="divider"></div>
-
-        <div class="card-bottom">
-            <div class="info-col">
-                <span class="label">Check In</span>
-                <span class="value">Sat 22 Mar 2025</span>
-                <span class="sub-value">12 PM</span>
-            </div>
-
-            <div class="pill-count">2 Night</div>
-
-            <div class="info-col">
-                <span class="label">Check Out</span>
-                <span class="value">Mon 24 Mar 2025</span>
-                <span class="sub-value">11 AM</span>
-            </div>
-
-            <div class="stay-summary-text">
-                2 Night &nbsp;|&nbsp; 2 Adult &nbsp;|&nbsp; 1 Room
-            </div>
-
-            <div class="info-col price-block">
-                <span class="label">Price</span>
-                <span class="final-price">22200 Rs</span>
-                <span class="mrp-discount">
-                    MRP <span class="mrp-strike">24000</span> 
-                    <span class="discount-badge">15% Discount</span>
-                </span>
-            </div>
-        </div>
-    </div>
+    <?php } ?>
 
 <?php include("footer.php") ?>

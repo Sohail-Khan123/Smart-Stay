@@ -345,7 +345,7 @@
     </div>
     <div class="main-container">
 
-        <!-- FILTERS -->
+        <!-- FILTERS
 
         <div class="filter-section">
 
@@ -377,7 +377,7 @@
                 <label><input type="checkbox"> 1 Star</label>
             </div>
 
-        </div>
+        </div> -->
 
 
         <!-- HOTEL CARD -->
@@ -394,11 +394,21 @@
 
                     <div class="hotel-left">
 
-                        <img src="<?php echo $row["poster"] ?>" class="main-img">
+                        <img src="<?php echo htmlspecialchars($row["poster"], ENT_QUOTES, 'UTF-8'); ?>" class="main-img" alt="Hotel Poster">
 
                         <div class="small-images">
-                            <img src="<?php echo $row["room_andHotelImages"]?>" >
-                            <img src="<?php echo $row["poster"]?>" >
+                            <?php
+                            if (!empty($row["room_andHotelImages"])) {
+                                $img_list = explode(",", $row["room_andHotelImages"]);
+                                foreach ($img_list as $img_url) {
+                                    $trimmed_url = trim($img_url);
+                                    if ($trimmed_url !== '') {
+                                        echo '<img src="' . htmlspecialchars($trimmed_url, ENT_QUOTES, 'UTF-8') . '" alt="Room Image">';
+                                    }
+                                }
+                            }
+                            ?>
+                            <img src="<?php echo htmlspecialchars($row["poster"], ENT_QUOTES, 'UTF-8'); ?>" alt="Poster Image">
                         </div>
 
                     </div>
