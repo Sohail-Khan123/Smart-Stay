@@ -4,11 +4,26 @@ A full-stack travel and hotel booking web application built with **PHP**, **MySQ
 
 ---
 
-## 📸 Preview
+## 📸 Project Screenshots
 
-| Homepage | Search Results | My Bookings |
-|----------|----------------|-------------|
-| Hero section with search | Hotel listing by city | Booking summary with map |
+### 🏠 Homepage
+
+![Homepage](screenshots/home_page.png)
+
+---
+
+
+
+### 🔍 Search Results
+
+![Search Results](screenshots/results_page.png)
+
+---
+
+### 📅 Booking Page
+
+![Booking](screenshots/book_page.png)
+
 
 ---
 
